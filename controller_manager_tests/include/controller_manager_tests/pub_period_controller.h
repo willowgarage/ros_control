@@ -1,5 +1,5 @@
 ///////////////////////////////////////////////////////////////////////////////
-// Copyright (C) 2012, hiDOF, INC and Willow Garage, Inc
+// Copyright (C) 2015, PAL Robotics S.L.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -8,7 +8,7 @@
 //   * Redistributions in binary form must reproduce the above copyright
 //     notice, this list of conditions and the following disclaimer in the
 //     documentation and/or other materials provided with the distribution.
-//   * Neither the name of Willow Garage Inc, hiDOF Inc, nor the names of its
+//   * Neither the names of PAL Robotics S.L. nor the names of its
 //     contributors may be used to endorse or promote products derived from
 //     this software without specific prior written permission.
 //
@@ -25,40 +25,35 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //////////////////////////////////////////////////////////////////////////////
 
-/*
- * Author: Wim Meeussen
- */
+#ifndef CONTROLLER_MANAGER_TESTS_PUB_PERIOD_CONTROLLER_H
+#define CONTROLLER_MANAGER_TESTS_PUB_PERIOD_CONTROLLER_H
+
+#include <ros/publisher.h>
+#include <controller_interface/controller.h>
+#include <hardware_interface/joint_command_interface.h>
+#include <pluginlib/class_list_macros.h>
 
 
-#ifndef CONTROLLER_MANAGER_CONTROLLER_SPEC_H
-#define CONTROLLER_MANAGER_CONTROLLER_SPEC_H
-
-#pragma GCC diagnostic ignored "-Wextra"
-
-#include <map>
-#include <string>
-#include <vector>
-#include <controller_interface/controller_base.h>
-#include <boost/shared_ptr.hpp>
-#include <hardware_interface/controller_info.h>
-
-namespace controller_manager
+namespace controller_manager_tests
 {
 
-/** \brief Controller Specification
- *
- * This struct contains both a pointer to a given controller, \ref c, as well
- * as information about the controller, \ref info.
- *
- */
-struct ControllerSpec
+
+class PubPeriodController: public controller_interface::Controller<hardware_interface::JointStateInterface>
 {
-  hardware_interface::ControllerInfo info;
-  boost::shared_ptr<controller_interface::ControllerBase> c;
-  int update_freq_divider; ///< If > 0, this controller will only be updated every n-th cycle
+public:
+  PubPeriodController(){}
+
+  using controller_interface::Controller<hardware_interface::JointStateInterface>::init;
+  bool init(hardware_interface::JointStateInterface* /*hw*/, ros::NodeHandle& n);
+  void starting(const ros::Time& /*time*/);
+  void update(const ros::Time& /*time*/, const ros::Duration& period);
+  void stopping(const ros::Time& /*time*/);
+
+private:
+  ros::Publisher period_pub_; // NOTE: Non real-time, for testing only
+
 };
 
 }
 
 #endif
-

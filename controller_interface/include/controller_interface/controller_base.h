@@ -41,6 +41,11 @@ namespace hardware_interface
   class InterfaceResources;
 }
 
+namespace controller_manager
+{
+  class ControllerManager;
+}
+
 namespace controller_interface
 {
 
@@ -102,6 +107,8 @@ public:
     if (state_ == RUNNING || state_ == INITIALIZED){
       starting(time);
       state_ = RUNNING;
+      skipped_update_cycles_ = 0;
+      time_since_last_update_ = ros::Duration();
       return true;
     }
     else
@@ -154,10 +161,17 @@ public:
   /// The current execution state of the controller
   enum {CONSTRUCTED, INITIALIZED, RUNNING} state_;
 
-
 private:
   ControllerBase(const ControllerBase &c);
   ControllerBase& operator =(const ControllerBase &c);
+
+  friend class controller_manager::ControllerManager;
+
+  /// The number of controller manager cycles skipped since the last controller update
+  int skipped_update_cycles_;
+
+  /// The duration since the last controller update
+  ros::Duration time_since_last_update_;
 
 };
 

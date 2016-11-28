@@ -37,6 +37,31 @@
 #include <controller_manager/controller_loader.h>
 #include <controller_manager_msgs/ControllerState.h>
 
+namespace
+{
+int getFrequencyDivider(const ros::NodeHandle& nh)
+{
+  int divider = 1;
+  const std::string param_name = "update_freq_divider";
+  if (nh.hasParam(param_name))
+  {
+    if (nh.getParam(param_name, divider))
+    {
+       if (divider < 1)
+       {
+         throw std::runtime_error("The '" + param_name + "' parameter cannot be zero or negative.");
+       }
+    }
+    else
+    {
+      throw std::runtime_error("The '" + param_name + "' parameter is not an integer.");
+    }
+  }
+  return divider;
+}
+
+}
+
 namespace controller_manager{
 
 
@@ -88,8 +113,26 @@ void ControllerManager::update(const ros::Time& time, const ros::Duration& perio
 
 
   // Update all controllers
-  for (size_t i=0; i<controllers.size(); i++)
-    controllers[i].c->updateRequest(time, period);
+  for (size_t i=0; i<controllers.size(); i++) {
+    const ControllerSpec& spec = controllers[i];
+
+    // update period accumulator and skipped_update_cycles counter
+    spec.c->time_since_last_update_ += period;
+    spec.c->skipped_update_cycles_++;
+
+    // skip cycle if skipped_update_cycles < update_freq_divider
+    //    (always update if update_freq_divider <= 1)
+    if (spec.c->skipped_update_cycles_ < spec.update_freq_divider) {
+      continue;
+    }
+
+    spec.c->updateRequest(time, spec.c->time_since_last_update_);
+
+    // reset period accumulator and skipped_update_cycles counter
+    spec.c->time_since_last_update_ = ros::Duration();
+    spec.c->skipped_update_cycles_ = 0;
+  }
+
 
   // there are controllers to start/stop
   if (please_switch_)
@@ -225,6 +268,21 @@ bool ControllerManager::loadController(const std::string& name)
     return false;
   }
 
+  // Configure controller update frequency divider parameter
+  int update_freq_divider;
+  try
+  {
+    update_freq_divider = getFrequencyDivider(c_nh);
+    ROS_DEBUG("Controller '%s' of type '%s' will only be updated every %d cycles.",
+              name.c_str(), type.c_str(), update_freq_divider);
+  }
+  catch (const std::runtime_error& ex)
+  {
+    ROS_ERROR("Could not load controller '%s'. %s", name.c_str(), ex.what());
+    to.clear();
+    return false;
+  }
+
   // Initializes the controller
   ROS_DEBUG("Initializing controller '%s'", name.c_str());
   bool initialized;
@@ -254,6 +312,7 @@ bool ControllerManager::loadController(const std::string& name)
   to[to.size()-1].info.name = name;
   to[to.size()-1].info.claimed_resources = claimed_resources;
   to[to.size()-1].c = c;
+  to[to.size()-1].update_freq_divider = update_freq_divider;
 
   // Destroys the old controllers list when the realtime thread is finished with it.
   int former_current_controllers_list_ = current_controllers_list_;

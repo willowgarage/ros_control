@@ -1,5 +1,5 @@
 ///////////////////////////////////////////////////////////////////////////////
-// Copyright (C) 2012, hiDOF, INC and Willow Garage, Inc
+// Copyright (C) 2012, hiDOF INC.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -8,7 +8,7 @@
 //   * Redistributions in binary form must reproduce the above copyright
 //     notice, this list of conditions and the following disclaimer in the
 //     documentation and/or other materials provided with the distribution.
-//   * Neither the name of Willow Garage Inc, hiDOF Inc, nor the names of its
+//   * Neither the name of hiDOF Inc nor the names of its
 //     contributors may be used to endorse or promote products derived from
 //     this software without specific prior written permission.
 //
@@ -25,40 +25,32 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //////////////////////////////////////////////////////////////////////////////
 
-/*
- * Author: Wim Meeussen
- */
+#include <std_msgs/Duration.h>
+#include <controller_manager_tests/pub_period_controller.h>
 
+using namespace controller_manager_tests;
 
-#ifndef CONTROLLER_MANAGER_CONTROLLER_SPEC_H
-#define CONTROLLER_MANAGER_CONTROLLER_SPEC_H
-
-#pragma GCC diagnostic ignored "-Wextra"
-
-#include <map>
-#include <string>
-#include <vector>
-#include <controller_interface/controller_base.h>
-#include <boost/shared_ptr.hpp>
-#include <hardware_interface/controller_info.h>
-
-namespace controller_manager
+bool PubPeriodController::init(hardware_interface::JointStateInterface* /*hw*/, ros::NodeHandle& n)
 {
-
-/** \brief Controller Specification
- *
- * This struct contains both a pointer to a given controller, \ref c, as well
- * as information about the controller, \ref info.
- *
- */
-struct ControllerSpec
-{
-  hardware_interface::ControllerInfo info;
-  boost::shared_ptr<controller_interface::ControllerBase> c;
-  int update_freq_divider; ///< If > 0, this controller will only be updated every n-th cycle
-};
-
+  period_pub_ = n.advertise<std_msgs::Duration>("period", 1);
+  return true;
 }
 
-#endif
+void PubPeriodController::starting(const ros::Time& /*time*/)
+{
+  ROS_INFO("Starting JointState Controller");
+}
 
+void PubPeriodController::update(const ros::Time& /*time*/, const ros::Duration& period)
+{
+  std_msgs::Duration msg;
+  msg.data = period;
+  period_pub_.publish(msg);
+}
+
+void PubPeriodController::stopping(const ros::Time& /*time*/)
+{
+  ROS_INFO("Stopping JointState Controller");
+}
+
+PLUGINLIB_EXPORT_CLASS( controller_manager_tests::PubPeriodController, controller_interface::ControllerBase)
