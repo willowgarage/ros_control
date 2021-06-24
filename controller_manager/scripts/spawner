@@ -116,6 +116,12 @@ def main():
     unload_controller_service = robot_namespace+"controller_manager/unload_controller"
     switch_controller_service = robot_namespace+"controller_manager/switch_controller"
 
+    # Wait for the clock to be published
+    while rospy.get_rostime() == rospy.Time(0):
+        rospy.loginfo_throttle(30, "Waiting for the ROS Clock to be available...")
+        rospy.sleep(0.2)
+    rospy.loginfo("ROS Clock acquired. Proceeding to load the controller(s).")
+
     try:
         # loader
         rospy.loginfo("Controller Spawner: Waiting for service "+load_controller_service)
